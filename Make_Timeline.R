@@ -3,6 +3,7 @@ fileURL <- "https://search.yahoo.com/search;?p=cars"
 
 library('RCurl')
 library('XML')
+
 #загрузка текста html страницы
 html <- getURL(fileURL)
 #разбираем как html
@@ -18,3 +19,27 @@ u <- xpathSApply(rootNode, '//span[contains(@class, "fz-ms fw-m fc-12th wr-bw lh
 
 #выделение источников
 s <- gsub(pattern = '/.+', replacement = '', x = u)
+
+#объединяем вектора во фрейм
+df <- data.frame(Year = 2016, Header = h, Source = s, URL = u)
+
+#далее для теста
+
+if(file.exists('Timeline.csv')){
+  print('есть')
+}
+#расширяем фрейм
+df1 <- data.frame(Year = 2016, Header = h, Source = s, URL = u)
+df <- rbind(df, df1)
+
+#перезапись файла
+write.csv(df, './Timeline.csv', row.names = F)
+
+
+
+
+
+
+
+
+
