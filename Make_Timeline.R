@@ -8,20 +8,26 @@ library('RCurl')
 library('XML')
 
 flag <<- T
+#форма для таблицы
 panel.table <<- ""
 
 #функция отображения таблицы
-my.search <- function(h,..){
+my.search <- function(h,..){ 
   
+  #данные для таблицы
   df <<- data.frame()
+  #поисковый запрос
   text <- svalue(panel.search)
+  #выбранный год
   god <- as.numeric(svalue(panel.slider.date))
+  #выбранный период
   step <- as.numeric(svalue(panel.slider.period))
   
   iter.step <- 0
   
+  #цикл по годам
   while(iter.step <= step){
-    
+    #формирование 3-х запросов
     search1 <- paste0(svalue(panel.search), " in ", god+iter.step)
     search2 <- paste0(svalue(panel.search), " * in ", god+iter.step)
     search3 <- paste0(svalue(panel.search), " in ", god+iter.step, " *")
@@ -29,14 +35,16 @@ my.search <- function(h,..){
     svalue(panel.text.search) <- paste0(search1,"     ",
                                         search2,"     ",
                                         search3)
-    
+    #вектор запросов
     search <- c(search1, search2, search3)
     
+    #цикл по запросам
     for (iter in 1:length(search)){
       
       #URL страницы поиска в Yahoo:
       fileURL <- "https://search.yahoo.com/search;?p="
       fileURL <- paste0(fileURL, search[iter])
+      #замена пробелов на %20
       gsub(pattern = '[ ]', replacement = '%20', x = fileURL)
       
       #загрузка текста html страницы
@@ -63,7 +71,10 @@ my.search <- function(h,..){
       h.short <- c()
       for (i in 1:length(u)){
         #ищем совпадение с ссылками
-        h.short <- c(h.short, grep(pattern = u[i], x = h[i:length(h)], value=TRUE, fixed = T))
+        tmp <- grep(pattern = u[i], x = h[i:length(h)], value=TRUE, fixed = T)
+        if(length(tmp) != 0){
+          h.short <- c(h.short, tmp[1])
+        }
       }
       
       #выделяем ссылку
@@ -80,24 +91,27 @@ my.search <- function(h,..){
       
       #объединяем вектора во фрейм
       df1 <- data.frame(Year = god+iter.step, Header = h.title, Source = s, URL = u)
+      #добавляем строки во фрейм
       df <<- rbind(df, df1)
       
+      #обновляем загрузку
       svalue(panel.loading) <- paste("Загрузка ", 100 * iter.step/step, " %")
     }
+    #пауза от капчи
     Sys.sleep(5)
     iter.step <- iter.step + 1
   }
   
   
   if (flag){
-    
+    #добавляем таблицу в окно
     panel.table <<- gtable(items = df, container = group)
     size(panel.table) <- c(300, 500)
     
     flag <<- F
     
   }else{
-    
+    #обновляем таблицу в окне
     delete(group, panel.table)
     panel.table <<- gtable(items = df, container = group)
     size(panel.table) <- c(300, 500)
@@ -113,15 +127,18 @@ my.save <- function(h,..){
 
 #!!!нужно выбрать пакет gWidgetsRGtk2
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+#создание элементов в окне
 panel.search <- gedit(text = "Your search", width = 40)
 panel.btn <- gbutton(text = "Найти")
 panel.btn.save <- gbutton(text = "Сохранить")
 panel.text.search <- glabel()
 panel.loading <- glabel()
 
+#создание стилей
 font(panel.loading) <- c( color = "red")
 font(panel.text.search) <- c( size = "14")
 
+#создание элементов в окне
 panel.slider.period <- gslider(from=10, to=100, by=1)
 panel.slider.date <- gslider(from=1900, to=2050, by=1)
 panel.label.data <- glabel(text = " С какого \n года ")
@@ -136,7 +153,7 @@ addHandlerClicked(panel.btn.save, handler=my.save)
 #Создание окна
 window <- gwindow("Результаты поисковика Yahoo", width = 900, height = 700, visible = F)
 
-group <<- ggroup(horizontal=F, container=window, spacing = )
+group <<- ggroup(horizontal=F, container=window)
 
 #Добавление в окно поля загрузки
 tmp <- gframe("", container=group)
@@ -145,7 +162,7 @@ add(tmp, panel.loading)
 #Добавление в окно текстовой метки
 glabel(text = "Что ищем?", container=group)
 
-tmp <- gframe("Запрос на английском", container=group)
+tmp <- gframe("Запрос на английском (желательно)", container=group)
 
 #Добавление в окно textbox
 add(tmp, panel.search)
@@ -158,7 +175,7 @@ add(tmp, panel.slider.date)
 
 #Добавление в окно label
 add(tmp, panel.label.period)
-#Добавление в окно slider количества лет
+#Добавление в окно slider - период
 size(panel.slider.period) <- c(150, 40)
 add(tmp, panel.slider.period)
 #Добавление в окно кнопку поиска
