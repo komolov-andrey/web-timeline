@@ -1,71 +1,175 @@
-#URL страницы поиска в Yahoo: "games"
-fileURL <- "https://search.yahoo.com/search;?p=mothers%20in%20city"
 
+#Загрузка пакетов
+library("gWidgetsRGtk2")
+library("gWidgets")
+library("rpanel")
+library("data.table")
 library('RCurl')
 library('XML')
 
-#загрузка текста html страницы
-html <- getURL(fileURL)
-#разбираем как html
-doc <- htmlTreeParse(html, useInternalNodes = T)
-#корневой элемент
-rootNode <- xmlRoot(doc)
+flag <<- T
+panel.table <<- ""
+df <<- data.frame()
 
-#выбор ссылок
-u <- xpathSApply(rootNode, '//span[contains(@class, "fz-ms fw-m fc-12th wr-bw lh-17")]', xmlValue)
-
-#выделение источников
-s <- gsub(pattern = '/.+', replacement = '', x = u)
-
-#выбор заголовков
-h <- xpathSApply(rootNode, '//div[contains(@class, "compTitle options-toggle")]', xmlValue)
-
-#убираем конечный пробел
-h <- gsub(pattern = '[ ]+$', replacement = '', x = h)
-
-#т.к. в некоторых запросах теги для ссылок разные, то
-#формируем новый вектор
-h.short <- c()
-for (i in 1:length(u)){
-  #ищем совпадение с ссылками
-  h.short <- c(h.short, grep(pattern = u[i], x = h[i:length(h)], value=TRUE, fixed = T))
+#функция отображения таблицы
+my.search <- function(h,..){
+  
+  
+  text <- svalue(panel.search)
+  god <- as.numeric(svalue(panel.slider.date))
+  step <- as.numeric(svalue(panel.slider.period))
+  
+  iter.step <- 0
+  
+  while(iter.step <= step){
+    
+    search1 <- paste0(svalue(panel.search), " in ", god+step)
+    search2 <- paste0(svalue(panel.search), " * in ", god+step)
+    search3 <- paste0(svalue(panel.search), " in ", god+step, " *")
+    
+    svalue(panel.text.search) <- paste0(search1,"     ",
+                                        search2,"     ",
+                                        search3)
+    
+    search <- c(search1, search2, search3)
+    
+    for (iter in 1:length(search)){
+      
+      #URL страницы поиска в Yahoo:
+      fileURL <- "https://search.yahoo.com/search;?p="
+      fileURL <- paste0(fileURL, search[iter])
+      gsub(pattern = '[ ]', replacement = '%20', x = fileURL)
+      
+      #загрузка текста html страницы
+      html <- getURL(fileURL)
+      #разбираем как html
+      doc <- htmlTreeParse(html, useInternalNodes = T)
+      #корневой элемент
+      rootNode <- xmlRoot(doc)
+      
+      #выбор ссылок
+      u <- xpathSApply(rootNode, '//span[contains(@class, "fz-ms fw-m fc-12th wr-bw lh-17")]', xmlValue)
+      
+      #выделение источников
+      s <- gsub(pattern = '/.+', replacement = '', x = u)
+      
+      #выбор заголовков
+      h <- xpathSApply(rootNode, '//div[contains(@class, "compTitle options-toggle")]', xmlValue)
+      
+      #убираем конечный пробел
+      h <- gsub(pattern = '[ ]+$', replacement = '', x = h)
+      
+      #т.к. в некоторых запросах теги для ссылок разные, то
+      #формируем новый вектор
+      h.short <- c()
+      for (i in 1:length(u)){
+        #ищем совпадение с ссылками
+        h.short <- c(h.short, grep(pattern = u[i], x = h[i:length(h)], value=TRUE, fixed = T))
+      }
+      
+      #выделяем ссылку
+      h.short.url <- gsub(pattern = '.+[ ]', replacement = '', x = h.short)
+      
+      h.title <- c()
+      for (i in 1:length(h.short.url)){
+        #выделяем заголовок
+        h.title <- c(h.title, gsub(pattern = h.short.url[i], replacement = '', x = h.short[i], fixed = T))
+      }
+      
+      #убираем конечный пробел
+      h.title <- gsub(pattern = '[ ]+$', replacement = '', x = h.title)
+      
+      #объединяем вектора во фрейм
+      df1 <- data.frame(Year = god+iter.step, Header = h.title, Source = s, URL = u)
+      df <<- rbind(df, df1)
+      
+      svalue(panel.loading) <- paste("Загрузка ", 100 *(1 + iter.step)/step, " %")
+    }
+    Sys.sleep(5)
+    iter.step <- iter.step + 1
+  }
+  
+  
+  if (flag){
+    
+    panel.table <<- gtable(items = df, container = group)
+    size(panel.table) <- c(300, 500)
+    
+    flag <<- F
+    
+  }else{
+    
+    delete(group, panel.table)
+    panel.table <<- gtable(items = df1, container = group)
+    size(panel.table) <- c(300, 500)
+    
+  }
 }
 
-#выделяем ссылку
-h.short.url <- gsub(pattern = '.+[ ]', replacement = '', x = h.short)
-
-h.title <- c()
-for (i in 1:length(h.short.url)){
-  #выделяем заголовок
-  h.title <- c(h.title, gsub(pattern = h.short.url[i], replacement = '', x = h.short[i], fixed = T))
-
-}
-#убираем конечный пробел
-h.title <- gsub(pattern = '[ ]+$', replacement = '', x = h.title)
-
-#объединяем вектора во фрейм
-df <- data.frame(Year = 2016, Header = h.title, Source = s, URL = u)
-
-
-
-#далее для теста
-
-if(file.exists('Timeline.csv')){
-  print('есть')
+#функция сохранения таблицы
+my.save <- function(h,..){
+  #перезапись файла
+  write.csv(df, './Timeline.csv', row.names = F)
 }
 
-#расширяем фрейм
-df1 <- data.frame(Year = 2016, Header = h, Source = s, URL = u)
-df <- rbind(df, df1)
+#!!!нужно выбрать пакет gWidgetsRGtk2
+#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+panel.search <- gedit(text = "Your search", width = 30)
+panel.btn <- gbutton(text = "Найти")
+panel.btn.save <- gbutton(text = "Сохранить")
+panel.text.search <- glabel()
+panel.loading <- glabel()
 
-#перезапись файла
-write.csv(df, './Timeline.csv', row.names = F)
+font(panel.loading) <- c( color = "red")
+font(panel.text.search) <- c( size = "14")
+
+panel.slider.period <- gslider(from=10, to=100, by=1)
+panel.slider.date <- gslider(from=1900, to=2050, by=1)
+panel.label.data <- glabel(text = " С какого \n года ")
+panel.label.period <- glabel(text = " Число лет  ")
+
+#Обработка события при нажатии на кнопку поиск
+addHandlerClicked(panel.btn, handler=my.search)
+
+#Обработка события при нажатии на кнопку сохранить
+addHandlerClicked(panel.btn.save, handler=my.save)
+
+#Создание окна
+window <- gwindow("Результаты поисковика Yahoo", width = 900, height = 700, visible = F)
+
+group <<- ggroup(horizontal=F, container=window, spacing = )
+
+#Добавление в окно поля загрузки
+tmp <- gframe("", container=group)
+add(tmp, panel.loading)
+
+#Добавление в окно текстовой метки
+glabel(text = "Что ищем?", container=group)
+
+tmp <- gframe("Запрос на английском", container=group)
+
+#Добавление в окно textbox
+add(tmp, panel.search)
+
+#Добавление в окно label
+add(tmp, panel.label.data)
+#Добавление в окно slider даты
+size(panel.slider.date) <- c(150, 40)
+add(tmp, panel.slider.date)
+
+#Добавление в окно label
+add(tmp, panel.label.period)
+#Добавление в окно slider количества лет
+size(panel.slider.period) <- c(150, 40)
+add(tmp, panel.slider.period)
+#Добавление в окно кнопку поиска
+add(tmp, panel.btn)
+#Добавление в окно кнопку сохранить
+add(tmp, panel.btn.save)
 
 
+tmp <- gframe("Ваш первый запрос", container=group)
+#Добавление в окно label
+add(tmp, panel.text.search)
 
-
-
-
-
-
-
+visible(window) <- T
