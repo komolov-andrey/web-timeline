@@ -9,12 +9,11 @@ library('XML')
 
 flag <<- T
 panel.table <<- ""
-df <<- data.frame()
 
 #функция отображения таблицы
 my.search <- function(h,..){
   
-  
+  df <<- data.frame()
   text <- svalue(panel.search)
   god <- as.numeric(svalue(panel.slider.date))
   step <- as.numeric(svalue(panel.slider.period))
@@ -23,9 +22,9 @@ my.search <- function(h,..){
   
   while(iter.step <= step){
     
-    search1 <- paste0(svalue(panel.search), " in ", god+step)
-    search2 <- paste0(svalue(panel.search), " * in ", god+step)
-    search3 <- paste0(svalue(panel.search), " in ", god+step, " *")
+    search1 <- paste0(svalue(panel.search), " in ", god+iter.step)
+    search2 <- paste0(svalue(panel.search), " * in ", god+iter.step)
+    search3 <- paste0(svalue(panel.search), " in ", god+iter.step, " *")
     
     svalue(panel.text.search) <- paste0(search1,"     ",
                                         search2,"     ",
@@ -83,7 +82,7 @@ my.search <- function(h,..){
       df1 <- data.frame(Year = god+iter.step, Header = h.title, Source = s, URL = u)
       df <<- rbind(df, df1)
       
-      svalue(panel.loading) <- paste("Загрузка ", 100 *(1 + iter.step)/step, " %")
+      svalue(panel.loading) <- paste("Загрузка ", 100 * iter.step/step, " %")
     }
     Sys.sleep(5)
     iter.step <- iter.step + 1
@@ -100,7 +99,7 @@ my.search <- function(h,..){
   }else{
     
     delete(group, panel.table)
-    panel.table <<- gtable(items = df1, container = group)
+    panel.table <<- gtable(items = df, container = group)
     size(panel.table) <- c(300, 500)
     
   }
@@ -114,7 +113,7 @@ my.save <- function(h,..){
 
 #!!!нужно выбрать пакет gWidgetsRGtk2
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-panel.search <- gedit(text = "Your search", width = 30)
+panel.search <- gedit(text = "Your search", width = 40)
 panel.btn <- gbutton(text = "Найти")
 panel.btn.save <- gbutton(text = "Сохранить")
 panel.text.search <- glabel()
@@ -168,7 +167,7 @@ add(tmp, panel.btn)
 add(tmp, panel.btn.save)
 
 
-tmp <- gframe("Ваш первый запрос", container=group)
+tmp <- gframe("Ваш текущий запрос", container=group)
 #Добавление в окно label
 add(tmp, panel.text.search)
 
