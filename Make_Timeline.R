@@ -1,21 +1,22 @@
 
 #Загрузка пакетов
-library("gWidgetsRGtk2")
-library("gWidgets")
-library("rpanel")
-library("data.table")
+library('gWidgets')
 library('RCurl')
 library('XML')
+library('gWidgetsRGtk2')
 
 flag <<- T
 #форма для таблицы
 panel.table <<- ""
+#данные для таблицы
+df <- data.frame()
 
 #функция отображения таблицы
-my.search <- function(h,..){ 
+my.search <- function(h,..){
   
-  #данные для таблицы
-  df <<- data.frame()
+  #для правильного отображения талблицы при повторном запросе
+  df.loc <- data.frame()
+  
   #поисковый запрос
   text <- svalue(panel.search)
   #выбранный год
@@ -92,7 +93,7 @@ my.search <- function(h,..){
       #объединяем вектора во фрейм
       df1 <- data.frame(Year = god+iter.step, Header = h.title, Source = s, URL = u)
       #добавляем строки во фрейм
-      df <<- rbind(df, df1)
+      df.loc <- rbind(df.loc, df1)
       
       #обновляем загрузку
       svalue(panel.loading) <- paste("Загрузка ", 100 * iter.step/step, " %")
@@ -105,7 +106,7 @@ my.search <- function(h,..){
   
   if (flag){
     #добавляем таблицу в окно
-    panel.table <<- gtable(items = df, container = group)
+    panel.table <<- gtable(items = df.loc, container = group)
     size(panel.table) <- c(300, 500)
     
     flag <<- F
@@ -113,10 +114,11 @@ my.search <- function(h,..){
   }else{
     #обновляем таблицу в окне
     delete(group, panel.table)
-    panel.table <<- gtable(items = df, container = group)
+    panel.table <<- gtable(items = df.loc, container = group)
     size(panel.table) <- c(300, 500)
     
   }
+  df <<- df.loc
 }
 
 #функция сохранения таблицы
@@ -125,8 +127,7 @@ my.save <- function(h,..){
   write.csv(df, './Timeline.csv', row.names = F)
 }
 
-#!!!нужно выбрать пакет gWidgetsRGtk2
-#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 #создание элементов в окне
 panel.search <- gedit(text = "Your search", width = 40)
 panel.btn <- gbutton(text = "Найти")
